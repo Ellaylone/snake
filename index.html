@@ -1,0 +1,17 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="utf-8">
+    <title>Snake Game</title>
+  </head>
+  <body>
+    <canvas class="snake"></canvas>
+  </body>
+  <script type="text/javascript" src="./index.js"></script>
+  <script type="text/javascript">
+    const canvas = document.querySelector('canvas')
+
+    snakeGame.init(canvas, 420, { displayGrid: true, isWraps: true })
+    snakeGame.start()
+  </script>
+</html>
