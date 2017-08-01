@@ -1,22 +1,31 @@
 const snakeGame = (() => {
-  const utils = {
-    rnd: {
-      range: {
-        int: (min, max) => Math.floor(Math.random() * (max - min + 1)) + min
+  const random = (() => {
+    class Random {
+      range(min, max) {
+        return Math.floor(Math.random() * (max - min + 1)) + min
+      }
+
+      from(arr) {
+        return arr[this.range(0, arr.length - 1)]
       }
     }
-  }
+
+    return new Random
+  })()
 
   class Game {
     constructor() {
       this.canvas = null
       this.ctx = null
       this.loaded = false
+      this.allowedPositions = []
+      this.treatPos = false
 
       this.options = {
         boardBgColor: 'black',
         snakeBgColor: 'white',
         gridBgColor: 'white',
+        treatBgColor: 'green',
         isWraps: true,
 
         displayGrid: false,
@@ -49,18 +58,22 @@ const snakeGame = (() => {
     onKeyDown(e) {
       switch (e.keyCode) {
         case 37:
+          if (this.snake.vx === 1) break
           this.snake.vx = -1
           this.snake.vy = 0
           break
         case 38:
+          if (this.snake.vy === 1) break
           this.snake.vx = 0
           this.snake.vy = -1
           break
         case 39:
+          if (this.snake.vx === -1) break
           this.snake.vx = 1
           this.snake.vy = 0
           break
         case 40:
+          if (this.snake.vy === -1) break
           this.snake.vx = 0
           this.snake.vy = 1
           break
@@ -85,10 +98,10 @@ const snakeGame = (() => {
     }
 
     drawGrid() {
-      const sideSquares = this.canvas.width / this.options.tileSize
       this.ctx.strokeStyle = this.options.gridBgColor
-      for (let i = 0; i < sideSquares; i++) {
-        for (let j = 0; j < sideSquares; j++) {
+
+      for (let i = 0; i < this.tilesInSide; i++) {
+        for (let j = 0; j < this.tilesInSide; j++) {
           this.ctx.strokeRect(this.options.tileSize * i, this.options.tileSize * j, this.options.tileSize, this.options.tileSize)
         }
       }
@@ -102,7 +115,26 @@ const snakeGame = (() => {
     }
 
     placeTreat() {
-      // const
+      if (!this.treatPos) {
+        this.calcAllowedPositions()
+
+        this.treatPos = random.from(this.allowedPositions)
+      }
+
+      this.ctx.fillStyle = this.options.treatBgColor
+      this.ctx.fillRect(this.treatPos.x * this.options.tileSize, this.treatPos.y * this.options.tileSize, this.options.tileSize, this.options.tileSize)
+    }
+
+    calcAllowedPositions() {
+      const positions = []
+
+      for (let i = 0; i < this.tilesInSide; i++) {
+        for (let j = 0; j < this.tilesInSide; j++) {
+          positions.push({ x: i, y: j })
+        }
+      }
+
+      this.allowedPositions = positions.filter(pos => !!this.snake.tailCoords.filter(tailPart => tailPart.x !== pos.x || tailPart.y !== pos.y).length)
     }
 
     drawSnake() {
@@ -118,6 +150,7 @@ const snakeGame = (() => {
     update() {
       this.drawBoard()
       this.options.displayGrid && this.drawGrid()
+      this.placeTreat()
       this.updateSnake()
     }
 
@@ -134,7 +167,15 @@ const snakeGame = (() => {
       if (head.y < 0) this.options.isWraps ? head.y = this.tilesInSide - 1 : isDead = true
       if (head.y > this.tilesInSide - 1) this.options.isWraps ? head.y = 0 : isDead = true
 
+      if (this.snake.tailCoords.some(part => part.x === head.x && part.y === head.y)) isDead = true
+
       if (isDead) Object.assign(head, this.startPosition)
+
+      if (head.x === this.treatPos.x && head.y == this.treatPos.y) {
+        this.treatPos = false
+
+        this.snake.addSegment()
+      }
 
       this.snake.updateTail(head, isDead)
       this.drawSnake()
@@ -182,6 +223,8 @@ const snakeGame = (() => {
     }
 
     updateTail(head, isDead) {
+      if (isDead) return this.initTail()
+
       const prevCoords = isDead ? head : { x: 0, y: 0 }
 
       this.tail = this.tail.map((part, index) => {
@@ -205,6 +248,10 @@ const snakeGame = (() => {
 
     get head() {
       return this.tail[0]
+    }
+
+    addSegment() {
+      this.tail.push(Object.assign({}, this.tail[this.tail.length - 1]))
     }
   }
 
